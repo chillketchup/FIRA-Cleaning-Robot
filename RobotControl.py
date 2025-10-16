@@ -1,8 +1,59 @@
 import sys
-from Initalise import *
 sys.path.append("/Applications/Webots.app/Contents/lib/controller/python")
 
 from controller import Robot, DistanceSensor, Motor, PositionSensor
+
+PI = 3.14159265
+
+robot = Robot()
+timestep = int(robot.getBasicTimeStep())
+
+# motor setup
+wheel_left = robot.getDevice('wheel1 motor')
+wheel_left.setPosition(float('inf'))
+wheel_right = robot.getDevice('wheel2 motor')
+wheel_right.setPosition(float('inf'))
+
+# wheel position sensors
+wheel_left_sensor = robot.getDevice('wheel1 sensor')
+wheel_left_sensor.enable(timestep)
+wheel_right_sensor = robot.getDevice('wheel2 sensor')
+wheel_right_sensor.enable(timestep)
+
+# distance sensors
+distance_sensor1 = robot.getDevice('D1')
+distance_sensor1.enable(timestep)
+distance_sensor2 = robot.getDevice('D2')
+distance_sensor2.enable(timestep)
+distance_sensor3 = robot.getDevice('D3')
+distance_sensor3.enable(timestep)
+distance_sensor4 = robot.getDevice('D4')
+distance_sensor4.enable(timestep)
+distance_sensor5 = robot.getDevice('D5')
+distance_sensor5.enable(timestep)
+distance_sensor6 = robot.getDevice('D6')
+distance_sensor6.enable(timestep)
+distance_sensor7 = robot.getDevice('D7')
+distance_sensor7.enable(timestep)
+distance_sensor8 = robot.getDevice('D8')
+distance_sensor8.enable(timestep)
+
+# GPS and orientation sensors
+gps_sensor = robot.getDevice('gps')
+gps_sensor.enable(timestep)
+
+compass_sensor = robot.getDevice('inertial_unit')
+compass_sensor.enable(timestep)
+
+emitter = robot.getDevice('emitter')
+emitter.setChannel(1)
+emitter.send('john'.encode('utf-8'))
+
+# globals for sensor data
+x, y, z = 0, 0, 0
+front_left, front_right, right_front, right_back, back_left, back_right, left_back, left_front = 0, 0, 0, 0, 0, 0, 0, 0
+roll, pitch, yaw = 0, 0, 0
+left_wheel_pos, right_wheel_pos = 0, 0
 
 def radToDegree(rad):
     return rad * 180 / PI
@@ -14,11 +65,61 @@ def setWheelVelocities(left_velocity, right_velocity):
     wheel_left.setVelocity(left_velocity)
     wheel_right.setVelocity(right_velocity)
 
-# globals for sensor data
-x, y, z = 0, 0, 0
-front_left, front_right, right_front, right_back, back_left, back_right, left_back, left_front = 0, 0, 0, 0, 0, 0, 0, 0
-roll, pitch, yaw = 0, 0, 0
-left_wheel_pos, right_wheel_pos = 0, 0
+def setOrientation(target_angle):
+    error = target_angle - yaw
+    if error > 180:
+        error -= 360
+    elif error < -180:
+        error += 360
+    
+    if abs(error) > 2:
+        if error > 0:
+            setWheelVelocities(3, -3)
+        else:
+            setWheelVelocities(-3, 3)
+    else:
+        setWheelVelocities(0, 0)
+
+def alignToClosestWall():
+    error = (front_left - front_right) + (right_front - right_back) + (left_front - left_back) + (back_left - back_right)
+
+    if abs(error) > 2: 
+        if error > 0:
+            setWheelVelocities(3, -3)
+        else:
+            setWheelVelocities(-3, 3)
+    else:
+        setWheelVelocities(0, 0)
+
+# def alignToWall(sensor1, sensor2):
+#         error = sensor1 - sensor2
+        
+#         if abs(error) > 2: 
+#             if error > 0:
+#                 setWheelVelocities(3, -3)
+#             else:
+#                 setWheelVelocities(-3, 3)
+#         else:
+#             setWheelVelocities(0, 0)
+
+# def findClosestWall():
+#     distances = {
+#         'front': front_left + front_right,
+#         'right': right_front + right_back,
+#         'left': left_front + left_back,
+#         'back': back_left + back_right,
+#     }
+    
+#     closest_wall = min(distances, key=distances.get)
+    
+#     if closest_wall == 'front':
+#         alignToWall(front_left, front_right)
+#     elif closest_wall == 'right':
+#         alignToWall(right_front, right_back)
+#     elif closest_wall == 'left':
+#         alignToWall(left_front, left_back)
+#     else:
+#         alignToWall(back_left, back_right)
 
 def readAllSensors():
     global x, y, z, front_left, front_right, right_front, right_back, back_left, back_right, left_back, left_front
@@ -71,6 +172,6 @@ def printAllSensors():
     print('-' * 50)
 
 while robot.step(timestep) != -1:
-    setWheelVelocities(-10, -10)
     readAllSensors()
     printAllSensors()
+    alignToClosestWall()
