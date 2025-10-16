@@ -174,4 +174,4 @@ def printAllSensors():
 while robot.step(timestep) != -1:
     readAllSensors()
     printAllSensors()
-    alignToClosestWall()
+    setOrientation(0)
