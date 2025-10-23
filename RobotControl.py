@@ -72,11 +72,20 @@ def setOrientation(target_angle):
     elif error < -180:
         error += 360
     
+    speed = 0.2 * error
+
+    print(speed)
+    
+    if speed > 4:
+        speed = 4
+    elif speed < -4:
+        speed = -4
+    
     if abs(error) > 2:
         if error > 0:
-            setWheelVelocities(3, -3)
+            setWheelVelocities(speed, -speed)
         else:
-            setWheelVelocities(-3, 3)
+            setWheelVelocities(-speed, speed)
     else:
         setWheelVelocities(0, 0)
 
@@ -174,4 +183,4 @@ def printAllSensors():
 while robot.step(timestep) != -1:
     readAllSensors()
     printAllSensors()
-    setOrientation(0)
+    setOrientation(90)
