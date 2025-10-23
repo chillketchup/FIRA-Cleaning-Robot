@@ -65,20 +65,43 @@ def setWheelVelocities(left_velocity, right_velocity):
     wheel_left.setVelocity(left_velocity)
     wheel_right.setVelocity(right_velocity)
 
-#=============== Alighment Functions ===============#
+#=============== Alignment Functions ===============#
+
+last_error, I = 0, 0
 
 def setOrientation(target_angle):
-    error = target_angle - yaw
+    global last_error, I
+    error = yaw - target_angle
+    
     if error > 180:
         error -= 360
     elif error < -180:
         error += 360
+
+    P = 0.2 * error
+
+    if abs(error) < 30: I += error * 0.001
+    else: I = 0
+
+    D = 0.05 * (error - last_error)    
+    last_error = error
+
+    print('\n=== PID CALCULATIONS ===')
+    print('error: ', '{:.1f}'.format(error))
+    print('P:', '{:.1f}'.format(P))
+    print('I:', '{:.1f}'.format(I))
+    print('D:', '{:.1f}'.format(D))
     
-    speed = 0.2 * error
+    speed = P + I + D
     speed = min(max(speed, -10), 10)
 
-    setWheelVelocities(speed, -speed)
-    if abs(error) < 2: setWheelVelocities(0, 0)
+    if abs(error) <= 0.5:
+        speed = 0
+        I = 0
+
+    setWheelVelocities(-speed, speed)
+
+#=============== Alignment Functions ===============#
 
 def alignToClosestWall():
     error = (front_left - front_right) + (right_front - right_back) + (left_front - left_back) + (back_left - back_right)
@@ -90,6 +113,8 @@ def alignToClosestWall():
             setWheelVelocities(-3, 3)
     else:
         setWheelVelocities(0, 0)
+
+#=============== Alignment Functions ===============#
 
 # def alignToWall(sensor1, sensor2):
 #         error = sensor1 - sensor2
@@ -173,5 +198,4 @@ def printAllSensors():
 
 while robot.step(timestep) != -1:
     readAllSensors()
-    printAllSensors()
     setOrientation(90)
