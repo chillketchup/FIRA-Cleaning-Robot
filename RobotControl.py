@@ -65,6 +65,8 @@ def setWheelVelocities(left_velocity, right_velocity):
     wheel_left.setVelocity(left_velocity)
     wheel_right.setVelocity(right_velocity)
 
+#=============== Alighment Functions ===============#
+
 def setOrientation(target_angle):
     error = target_angle - yaw
     if error > 180:
@@ -73,21 +75,10 @@ def setOrientation(target_angle):
         error += 360
     
     speed = 0.2 * error
+    speed = min(max(speed, -10), 10)
 
-    print(speed)
-    
-    if speed > 4:
-        speed = 4
-    elif speed < -4:
-        speed = -4
-    
-    if abs(error) > 2:
-        if error > 0:
-            setWheelVelocities(speed, -speed)
-        else:
-            setWheelVelocities(-speed, speed)
-    else:
-        setWheelVelocities(0, 0)
+    setWheelVelocities(speed, -speed)
+    if abs(error) < 2: setWheelVelocities(0, 0)
 
 def alignToClosestWall():
     error = (front_left - front_right) + (right_front - right_back) + (left_front - left_back) + (back_left - back_right)
