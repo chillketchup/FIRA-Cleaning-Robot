@@ -55,6 +55,16 @@ front_left, front_right, right_front, right_back, back_left, back_right, left_ba
 roll, pitch, yaw = 0, 0, 0
 left_wheel_pos, right_wheel_pos = 0, 0
 
+# 
+time = 0
+target_angle = 90
+start_time = 0
+
+algorithm = "find_corner"
+state = "turn"
+state_next = "forward"
+turn_dir = ""
+
 def radToDegree(rad):
     return rad * 180 / PI
 
@@ -85,17 +95,11 @@ def setOrientation(target_angle):
 
     D = 0.05 * (error - last_error)    
     last_error = error
-
-    print('\n=== PID CALCULATIONS ===')
-    print('error: ', '{:.1f}'.format(error))
-    print('P:', '{:.1f}'.format(P))
-    print('I:', '{:.1f}'.format(I))
-    print('D:', '{:.1f}'.format(D))
     
     speed = P + I + D
     speed = min(max(speed, -10), 10)
 
-    if abs(error) <= 0.5:
+    if abs(error) <= 0.1:
         speed = 0
         I = 0
 
@@ -113,38 +117,6 @@ def alignToClosestWall():
             setWheelVelocities(-3, 3)
     else:
         setWheelVelocities(0, 0)
-
-#=============== Alignment Functions ===============#
-
-# def alignToWall(sensor1, sensor2):
-#         error = sensor1 - sensor2
-        
-#         if abs(error) > 2: 
-#             if error > 0:
-#                 setWheelVelocities(3, -3)
-#             else:
-#                 setWheelVelocities(-3, 3)
-#         else:
-#             setWheelVelocities(0, 0)
-
-# def findClosestWall():
-#     distances = {
-#         'front': front_left + front_right,
-#         'right': right_front + right_back,
-#         'left': left_front + left_back,
-#         'back': back_left + back_right,
-#     }
-    
-#     closest_wall = min(distances, key=distances.get)
-    
-#     if closest_wall == 'front':
-#         alignToWall(front_left, front_right)
-#     elif closest_wall == 'right':
-#         alignToWall(right_front, right_back)
-#     elif closest_wall == 'left':
-#         alignToWall(left_front, left_back)
-#     else:
-#         alignToWall(back_left, back_right)
 
 def readAllSensors():
     global x, y, z, front_left, front_right, right_front, right_back, back_left, back_right, left_back, left_front
@@ -196,6 +168,81 @@ def printAllSensors():
     print(f'Right wheel: {right_wheel_pos:.2f}°')
     print('-' * 50)
 
+#=============== Utility Functions ===============#
+
+def changeTargetAngle(increase):
+    global target_angle
+
+    target_angle = yaw + increase
+
+    if target_angle < -180: target_angle += 360
+    elif target_angle > 180: target_angle -= 360
+
+def angleReached(angle):
+    if abs(yaw - angle) <= 0.1 or abs(yaw - angle) >= 359.9:
+        return True
+
+#=============== Main Loop ===============#
+
 while robot.step(timestep) != -1:
+    print(state, time, yaw, target_angle)
+
     readAllSensors()
-    setOrientation(90)
+    time += 1
+
+    if algorithm == "find_corner":
+        if state == "turn": 
+            setOrientation(target_angle)
+
+            if angleReached(target_angle):
+                if target_angle == -180:
+                    algorithm = "snake_sweep"
+                
+                state = state_next
+                time = 0
+        
+        elif state == "forward":
+            setWheelVelocities(10, 10)
+
+            if min(front_left, front_right) < 20:
+                if yaw > 45 and yaw < 135:
+                    state = "turn"
+                    target_angle = 0
+                    state_next = "forward"
+                
+                elif yaw > -45 and yaw < 45:
+                    state = "turn"
+                    target_angle = -180
+                    state_next = "forward"
+
+    elif algorithm == "snake_sweep":
+        if state == "forward":
+            setWheelVelocities(10, 10)
+
+            if min(front_left, front_right) < 20:
+                state = "turn"
+                state_next = "forward_time"
+
+                if yaw > -45 and yaw < 45: 
+                    changeTargetAngle(-90)
+                    turn_dir = -90
+                
+                elif yaw < -135 or yaw > 135:
+                    changeTargetAngle(90)
+                    turn_dir = 90
+
+        elif state == "turn": 
+            setOrientation(target_angle)
+
+            if angleReached(target_angle):
+                state = state_next
+                time = 0
+
+        elif state == "forward_time":
+            setWheelVelocities(10, 10)
+
+            if time >= 15 or min(front_left, front_right) < 20: 
+                state = "turn"
+                state_next = "forward"
+
+                changeTargetAngle(turn_dir)
