@@ -50,6 +50,7 @@ emitter.setChannel(1)
 emitter.send('john'.encode('utf-8'))
 
 # globals for sensor data
+prev_x, prev_z = 0, 0
 x, y, z = 0, 0, 0
 front_left, front_right, right_front, right_back, back_left, back_right, left_back, left_front = 0, 0, 0, 0, 0, 0, 0, 0
 roll, pitch, yaw = 0, 0, 0
@@ -59,6 +60,8 @@ left_wheel_pos, right_wheel_pos = 0, 0
 time = 0
 target_angle = 90
 start_time = 0
+stuck_time = 0
+unstuck_time = 0
 
 algorithm = "find_corner"
 state = "turn"
@@ -181,14 +184,33 @@ def changeTargetAngle(increase):
 def angleReached(angle):
     if abs(yaw - angle) <= 0.1 or abs(yaw - angle) >= 359.9:
         return True
+    
+def checkStuck():
+    global stuck_time
+
+    if stuck_time >= 20:
+        return True
+    else:
+        return False
 
 #=============== Main Loop ===============#
 
 while robot.step(timestep) != -1:
-    print(state, time, yaw, target_angle)
+    print(checkStuck())
 
+    prev_x = x
+    prev_z = z
+    prev_yaw = yaw
     readAllSensors()
     time += 1
+
+    if angleReached(prev_yaw) and abs(prev_x - x) < 0.1 and abs(prev_z - z) < 0.1:
+        stuck_time += 1
+    else:
+        unstuck_time += 1
+
+        if(unstuck_time >= 20): 
+            stuck_time = 0
 
     if algorithm == "find_corner":
         if state == "turn": 
